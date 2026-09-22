@@ -5,9 +5,15 @@ open_canvas(800, 600)
 
 character = load_image('character.png')
 
+clear_canvas()
+character.draw(400, 300)
+update_canvas()
+delay(2)
+
 def move_circle():
     print("CIRCLE")
-    
+    character.draw(400, 300)
+    update_canvas()
     pass
 
 def move_rectangle():
@@ -23,7 +29,5 @@ while True:
     move_rectangle()
     move_triangle()
     pass
-
-    
 
 close_canvas()
