@@ -29,5 +29,6 @@ while True:
     move_rectangle()
     move_triangle()
     pass
+    pass
 
 close_canvas()
