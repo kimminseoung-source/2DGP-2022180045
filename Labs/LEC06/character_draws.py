@@ -1,4 +1,5 @@
 # 실습 과제 진행
+import math
 from pico2d import *
 
 open_canvas(800, 600)
@@ -8,27 +9,62 @@ character = load_image('character.png')
 clear_canvas()
 character.draw(400, 300)
 update_canvas()
-delay(2)
+delay(1)
 
-def move_circle():
+def draw_circle():
     print("CIRCLE")
-    character.draw(400, 300)
+    for degree in range(361):  # 0도부터 360도까지 한 바퀴
+        angle = math.radians(degree)
+        x = 400 + 200 * math.cos(angle)
+        y = 300 + 200 * math.sin(angle)
+
+        draw_character(x,y)
+
+def draw_top():
+    print('TOP')
+    for x in range(50, 750, 5):
+        
+        draw_character(x,550)
+    
+    pass
+
+def draw_character(x, y):
+    clear_canvas()
+    character.draw(x, y)
     update_canvas()
+    delay(0.1)
+
+def draw_right():
+    print('right')
     pass
 
-def move_rectangle():
+def draw_left():
+    print('left')
+    pass
+
+def draw_bottom():
+    print('bottom')
+    pass
+
+
+def draw_rectangle():
     print("RECTANGLE")
+    draw_top()
+    draw_right()
+    draw_bottom()
+    draw_left()
+
     pass
 
-def move_triangle():
+def draw_triangle():
     print("TRIANGLE")
     pass
 
 while True:
-    move_circle()
-    move_rectangle()
-    move_triangle()
-    pass
+    draw_circle()
+    draw_rectangle()
+    # draw_triangle()
+    
     pass
 
 close_canvas()
