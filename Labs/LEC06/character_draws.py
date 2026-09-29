@@ -35,7 +35,8 @@ def draw_top():
     for x in range(50, 750, 5):
         
         draw_character(x,550)
-    
+        if x == 750:
+            draw_bottom()
     pass
 
 
@@ -49,11 +50,11 @@ def draw_left():
 
 def draw_bottom():
     print('bottom')
+    for y in range(550, 50, -5):
+        draw_character(750,y)
+        if y == 50:
+            draw_left()
     pass
-
-
-
-#  ===============================
 
 def draw_rectangle():
     print("RECTANGLE")
@@ -64,13 +65,14 @@ def draw_rectangle():
 
     pass
 
+# ==============================
 def draw_triangle():
     print("TRIANGLE")
     pass
 
 while True:
-    draw_circle()
-    # draw_rectangle()
+    # draw_circle()
+    draw_rectangle()
     # draw_triangle()
     
     pass
