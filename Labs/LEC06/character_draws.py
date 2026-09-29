@@ -9,7 +9,7 @@ character = load_image('character.png')
 clear_canvas()
 character.draw(400, 300)
 update_canvas()
-delay(2)
+delay(0.5)
 
 # ==============================
 def draw_circle():
@@ -32,9 +32,9 @@ def draw_character(x, y):
 
 def draw_top():
     print('TOP')
-    for y in range(50, 550, 20):
-        draw_character(50,y)
-        if y == 550:
+    for y in range(150, 450, 20):
+        draw_character(150,y)
+        if y == 450:
             draw_right()
 
     pass
@@ -109,7 +109,7 @@ def draw_rightup():
 # =================================
 while True:
     # draw_circle()
-    # draw_rectangle()
+    draw_rectangle()
     draw_triangle()
     
     pass
