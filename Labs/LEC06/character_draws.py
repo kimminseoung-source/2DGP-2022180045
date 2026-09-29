@@ -76,12 +76,42 @@ def draw_rectangle():
 # ==============================
 def draw_triangle():
     print("TRIANGLE")
+    draw_rightdown()
+    draw_left()
+    draw_rightup()
     pass
 
+def draw_rightdown():
+    print("RIGHTDOWN")
+    for x in range(400, 750, 20):     
+        y = 600 - (x - 400) * (250 / 350)
+        draw_character(x, y)
+        if x == 750:
+            draw_left()
+
+    pass
+
+def draw_left():
+    print("LEFT")
+    for x in range(750, 50, -20):
+        y = 50 + (x - 50) * (250 / 700)
+        draw_character(x, y)
+        if x == 50:
+            draw_rightup()
+    pass
+
+def draw_rightup():
+    print("RIGHTUP")
+
+    pass
+
+
+
+# =================================
 while True:
     # draw_circle()
-    draw_rectangle()
-    # draw_triangle()
+    # draw_rectangle()
+    draw_triangle()
     
     pass
 
