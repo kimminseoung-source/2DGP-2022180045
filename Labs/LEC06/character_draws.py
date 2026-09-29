@@ -32,16 +32,20 @@ def draw_character(x, y):
 
 def draw_top():
     print('TOP')
-    for x in range(50, 750, 20):
-        
-        draw_character(x,550)
-        if x == 750:
-            draw_bottom()
+    for y in range(50, 550, 20):
+        draw_character(50,y)
+        if y == 550:
+            draw_right()
+
     pass
 
 
 def draw_right():
     print('right')
+    for x in range(50, 750, 20):
+        draw_character(x,550)
+        if x == 750:
+            draw_bottom()
     pass
 
 def draw_left():
