@@ -9,7 +9,7 @@ character = load_image('character.png')
 clear_canvas()
 character.draw(400, 300)
 update_canvas()
-delay(1)
+delay(0.01)
 
 def draw_circle():
     print("CIRCLE")
