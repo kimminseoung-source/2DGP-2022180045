@@ -77,7 +77,7 @@ def draw_rectangle():
 def draw_triangle():
     print("TRIANGLE")
     draw_rightdown()
-    draw_left()
+    draw_triangle_bottom()
     draw_rightup()
     pass
 
