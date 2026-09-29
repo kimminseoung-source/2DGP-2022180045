@@ -9,16 +9,26 @@ character = load_image('character.png')
 clear_canvas()
 character.draw(400, 300)
 update_canvas()
-delay(0.01)
+delay(2)
 
+# ==============================
 def draw_circle():
     print("CIRCLE")
-    for degree in range(361):  # 0도부터 360도까지 한 바퀴
+    for degree in range(0, 361, 5):  # 0도부터 360도까지 한 바퀴
         angle = math.radians(degree)
         x = 400 + 200 * math.cos(angle)
         y = 300 + 200 * math.sin(angle)
 
         draw_character(x,y)
+
+# ==============================
+
+def draw_character(x, y):
+    get_events()
+    clear_canvas()
+    character.draw(x, y)
+    update_canvas()
+    delay(0.1)
 
 def draw_top():
     print('TOP')
@@ -28,11 +38,6 @@ def draw_top():
     
     pass
 
-def draw_character(x, y):
-    clear_canvas()
-    character.draw(x, y)
-    update_canvas()
-    delay(0.1)
 
 def draw_right():
     print('right')
@@ -46,6 +51,9 @@ def draw_bottom():
     print('bottom')
     pass
 
+
+
+#  ===============================
 
 def draw_rectangle():
     print("RECTANGLE")
@@ -62,7 +70,7 @@ def draw_triangle():
 
 while True:
     draw_circle()
-    draw_rectangle()
+    # draw_rectangle()
     # draw_triangle()
     
     pass
