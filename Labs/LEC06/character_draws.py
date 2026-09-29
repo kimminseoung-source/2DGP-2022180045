@@ -108,8 +108,8 @@ def draw_rightup():
 
 # =================================
 while True:
-    # draw_circle()
-    # draw_rectangle()
+    draw_circle()
+    draw_rectangle()
     draw_triangle()
     
     pass
