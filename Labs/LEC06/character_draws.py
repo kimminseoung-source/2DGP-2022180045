@@ -100,8 +100,8 @@ def draw_triangle_bottom():
 
 def draw_rightup():
     # 왼쪽 아래 → 꼭대기
-    for i in range(101):
-        x = 200 + 2 * i
+    for i in range(51):
+        x = 100 + 6 * i
         y = 100 + 3.46 * i
         draw_character(x, y)
 
