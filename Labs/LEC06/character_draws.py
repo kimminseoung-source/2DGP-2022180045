@@ -51,7 +51,7 @@ def draw_right():
 def draw_left():
     print('left')
     for x in range(650, 250, -20):
-        draw_character(x,50)
+        draw_character(x,150)
         if x == 50:
             draw_top()
     pass
