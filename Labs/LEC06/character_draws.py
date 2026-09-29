@@ -94,7 +94,7 @@ def draw_triangle_bottom():
     # 오른쪽 아래 → 왼쪽 아래
     for i in range(51):
         x = 700 - 12 * i
-        y = 100
+        y = 200
         draw_character(x, y)
 
 
@@ -102,7 +102,7 @@ def draw_rightup():
     # 왼쪽 아래 → 꼭대기
     for i in range(51):
         x = 100 + 6 * i
-        y = 100 + 6 * i
+        y = 200 + 6 * i
         draw_character(x, y)
 
 
