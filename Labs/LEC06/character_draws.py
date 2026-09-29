@@ -14,7 +14,7 @@ delay(2)
 # ==============================
 def draw_circle():
     print("CIRCLE")
-    for degree in range(0, 361, 5):  # 0도부터 360도까지 한 바퀴
+    for degree in range(0, 361, 20):  # 0도부터 360도까지 한 바퀴
         angle = math.radians(degree)
         x = 400 + 200 * math.cos(angle)
         y = 300 + 200 * math.sin(angle)
