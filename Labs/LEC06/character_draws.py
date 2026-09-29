@@ -84,16 +84,16 @@ def draw_triangle():
 
 def draw_rightdown():
     # 꼭대기 → 오른쪽 아래
-    for i in range(101):
-        x = 400 + 2 * i
-        y = 446 - 3.46 * i
+    for i in range(51):
+        x = 400 + 6 * i
+        y = 500 - 6 * i
         draw_character(x, y)
 
 
 def draw_triangle_bottom():
     # 오른쪽 아래 → 왼쪽 아래
-    for i in range(101):
-        x = 600 - 4 * i
+    for i in range(51):
+        x = 700 - 12 * i
         y = 100
         draw_character(x, y)
 
@@ -108,8 +108,8 @@ def draw_rightup():
 
 # =================================
 while True:
-    draw_circle()
-    draw_rectangle()
+    # draw_circle()
+    # draw_rectangle()
     draw_triangle()
     
     pass
