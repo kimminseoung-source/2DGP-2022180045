@@ -102,7 +102,7 @@ def draw_rightup():
     # 왼쪽 아래 → 꼭대기
     for i in range(51):
         x = 100 + 6 * i
-        y = 100 + 3.46 * i
+        y = 100 + 6 * i
         draw_character(x, y)
 
 
