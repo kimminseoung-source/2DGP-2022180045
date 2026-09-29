@@ -58,8 +58,8 @@ def draw_left():
 
 def draw_bottom():
     print('bottom')
-    for y in range(450, 150, -20):
-        draw_character(450,y)
+    for y in range(650, 150, -20):
+        draw_character(650,y)
         if y == 50:
             draw_left()
     pass
@@ -108,7 +108,7 @@ def draw_rightup():
 
 # =================================
 while True:
-    # draw_circle()
+    draw_circle()
     draw_rectangle()
     draw_triangle()
     
