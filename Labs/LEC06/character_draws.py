@@ -81,30 +81,29 @@ def draw_triangle():
     draw_rightup()
     pass
 
+
 def draw_rightdown():
-    print("RIGHTDOWN")
-    for x in range(400, 750, 20):     
-        y = 600 - (x - 400) * (250 / 350)
+    # 꼭대기 → 오른쪽 아래
+    for i in range(101):
+        x = 400 + 2 * i
+        y = 446 - 3.46 * i
         draw_character(x, y)
-        if x == 750:
-            draw_left()
 
-    pass
 
-def draw_left():
-    print("LEFT")
-    for x in range(750, 50, -20):
-        y = 50 + (x - 50) * (250 / 700)
+def draw_triangle_bottom():
+    # 오른쪽 아래 → 왼쪽 아래
+    for i in range(101):
+        x = 600 - 4 * i
+        y = 100
         draw_character(x, y)
-        if x == 50:
-            draw_rightup()
-    pass
+
 
 def draw_rightup():
-    print("RIGHTUP")
-
-    pass
-
+    # 왼쪽 아래 → 꼭대기
+    for i in range(101):
+        x = 200 + 2 * i
+        y = 100 + 3.46 * i
+        draw_character(x, y)
 
 
 # =================================
