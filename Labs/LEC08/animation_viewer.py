@@ -1,4 +1,5 @@
 """DRILL 08: AI-assisted animation viewer built incrementally."""
+import argparse
 from pathlib import Path
 import pico2d as p
 
@@ -74,6 +75,7 @@ class Playback:
         self.animation_index = 0
         self.frame_index = 0
         self.completed_repeats = 0
+        self.cycles = 0
         self.deadline = now + 0.12
 
     @property
@@ -87,6 +89,8 @@ class Playback:
             self.completed_repeats = 0
             self.frame_index = 0
             self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
+            if self.animation_index == 0:
+                self.cycles += 1
         elif self.frame_index + 1 < len(ANIMATIONS[self.animation_index][1]):
             self.frame_index += 1
         else:
@@ -110,10 +114,11 @@ def validate_sheet(sheet):
                 raise ValueError(f"{name}: frame outside sprite sheet")
 
 
-def main():
+def main(cycles=0):
     p.open_canvas(WIDTH, HEIGHT)
     try:
         sheet = p.load_image(str(SPRITE_PATH))
+        validate_sheet(sheet)
         playback = Playback(p.get_time())
         running = True
         while running:
@@ -122,8 +127,12 @@ def main():
                     event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE
                 ):
                     running = False
+            if not running:
+                break
             p.clear_canvas()
             playback.update(p.get_time())
+            if cycles and playback.cycles >= cycles:
+                break
             draw_frame(sheet, ANIMATIONS[playback.animation_index][1][playback.frame_index],
                        playback.animation_index, playback.frame_index)
             p.update_canvas()
@@ -133,4 +142,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cycles", type=int, default=0,
+                        help="Stop after N full sequences; 0 means forever.")
+    args = parser.parse_args()
+    if args.cycles < 0:
+        parser.error("--cycles must be nonnegative")
+    main(args.cycles)
