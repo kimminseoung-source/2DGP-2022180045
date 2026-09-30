@@ -37,7 +37,14 @@ def main():
                 ):
                     running = False
             p.clear_canvas()
-            draw_frame(sheet, (65, 20, 134, 211))
+            now = p.get_time()
+            if now >= next_frame_at:
+                frame_index += 1
+                if frame_index == len(ANIMATIONS[animation_index][1]):
+                    frame_index = 0
+                    animation_index = (animation_index + 1) % len(ANIMATIONS)
+                next_frame_at = now + 0.12
+            draw_frame(sheet, ANIMATIONS[animation_index][1][frame_index])
             p.update_canvas()
             p.delay(1 / 60)
     finally:
