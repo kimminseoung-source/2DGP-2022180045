@@ -90,7 +90,8 @@ def main():
                     frame_index = 0
                     animation_index = (animation_index + 1) % len(ANIMATIONS)
                 next_frame_at = now + 0.12
-            draw_frame(sheet, ANIMATIONS[animation_index][1][frame_index])
+            draw_frame(sheet, ANIMATIONS[animation_index][1][frame_index],
+                       animation_index, frame_index)
             p.update_canvas()
             p.delay(1 / 60)
     finally:
