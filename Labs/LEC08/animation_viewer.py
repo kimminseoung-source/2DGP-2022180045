@@ -68,13 +68,28 @@ def draw_frame(sheet, rect, animation_index, frame_index):
                     x, y, width * SCALE, height * SCALE)
 
 
+class Playback:
+    """Time-based playback; every frame stays visible for its full duration."""
+    def __init__(self, now):
+        self.animation_index = 0
+        self.frame_index = 0
+        self.deadline = now + 0.12
+
+    def update(self, now):
+        if now < self.deadline:
+            return
+        self.frame_index += 1
+        if self.frame_index == len(ANIMATIONS[self.animation_index][1]):
+            self.frame_index = 0
+            self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
+        self.deadline = now + 0.12
+
+
 def main():
     p.open_canvas(WIDTH, HEIGHT)
     try:
         sheet = p.load_image(str(SPRITE_PATH))
-        animation_index = 0
-        frame_index = 0
-        next_frame_at = p.get_time() + 0.12
+        playback = Playback(p.get_time())
         running = True
         while running:
             for event in p.get_events():
@@ -83,15 +98,9 @@ def main():
                 ):
                     running = False
             p.clear_canvas()
-            now = p.get_time()
-            if now >= next_frame_at:
-                frame_index += 1
-                if frame_index == len(ANIMATIONS[animation_index][1]):
-                    frame_index = 0
-                    animation_index = (animation_index + 1) % len(ANIMATIONS)
-                next_frame_at = now + 0.12
-            draw_frame(sheet, ANIMATIONS[animation_index][1][frame_index],
-                       animation_index, frame_index)
+            playback.update(p.get_time())
+            draw_frame(sheet, ANIMATIONS[playback.animation_index][1][playback.frame_index],
+                       playback.animation_index, playback.frame_index)
             p.update_canvas()
             p.delay(1 / 60)
     finally:
