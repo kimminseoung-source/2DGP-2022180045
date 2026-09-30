@@ -26,6 +26,9 @@ def main():
     p.open_canvas(WIDTH, HEIGHT)
     try:
         sheet = p.load_image(str(SPRITE_PATH))
+        animation_index = 0
+        frame_index = 0
+        next_frame_at = p.get_time() + 0.12
         running = True
         while running:
             for event in p.get_events():
