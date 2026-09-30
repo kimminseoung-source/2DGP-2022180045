@@ -26,8 +26,7 @@ def main():
                 ):
                     running = False
             p.clear_canvas()
-            sheet.clip_draw(65, 1440 - 20 - 211, 134, 211,
-                            WIDTH / 2, HEIGHT / 2, 134 * 1.85, 211 * 1.85)
+            draw_frame(sheet, (65, 20, 134, 211))
             p.update_canvas()
             p.delay(1 / 60)
     finally:
