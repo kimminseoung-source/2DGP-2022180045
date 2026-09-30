@@ -10,6 +10,7 @@ WIDTH, HEIGHT = 800, 600
 def main():
     p.open_canvas(WIDTH, HEIGHT)
     try:
+        sheet = p.load_image(str(SPRITE_PATH))
         running = True
         while running:
             for event in p.get_events():
