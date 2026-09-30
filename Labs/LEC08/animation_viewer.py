@@ -6,6 +6,14 @@ SPRITE_PATH = Path(__file__).with_name("samurai_animations.png")
 
 WIDTH, HEIGHT = 800, 600
 
+ANIMATIONS = [
+    ("Idle", [
+        (65, 20, 134, 211), (345, 21, 132, 210),
+        (662, 21, 130, 210), (967, 21, 133, 210),
+        (1250, 21, 133, 210),
+    ]),
+]
+
 
 def draw_frame(sheet, rect):
     # rect uses top-left image coordinates; pico2d clips from bottom-left.
