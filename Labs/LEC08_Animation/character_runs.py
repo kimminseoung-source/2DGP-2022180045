@@ -9,9 +9,9 @@ character = load_image('animation_sheet.png')
 frame =0
 
 
-# 왼쪽 바라보는 캐릭터를 오른쪽으로 이동시키며 애니메이션
+# 왼쪽 달리기
 
-for x in range(0, 800, 5):
+for x in range(800, 0, -5):
     clear_canvas()
     grass.draw(400, 30)
     character.clip_draw(
