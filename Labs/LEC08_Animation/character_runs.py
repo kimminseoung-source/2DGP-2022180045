@@ -43,6 +43,38 @@ for x in range(0, 800, 50):
     delay(0.1)
 
 
+# 왼쪽 걷기
+
+for x in range(800, 0, -50):
+    clear_canvas()
+    grass.draw(400, 30)
+    character.clip_draw(
+       frame * 100, 200,  # 1. 원본 이미지의 어디서 자를지 (x, y)
+        100, 100,       # 2. 얼마나 자를지 (가로, 세로)
+        x, 90,          # 4. 화면 어디에 그릴지 (중심 x, y)
+        
+    )
+    update_canvas()
+
+    frame = (frame + 1) % 8
+    delay(0.1)
+
+
+# 오른쪽 걷기
+
+for x in range(0, 800, 50):
+    clear_canvas()
+    grass.draw(400, 30)
+    character.clip_draw(
+       frame * 100, 300,  # 1. 원본 이미지의 어디서 자를지 (x, y)
+        100, 100,       # 2. 얼마나 자를지 (가로, 세로)
+        x, 90,          # 4. 화면 어디에 그릴지 (중심 x, y)
+        
+    )
+    update_canvas()
+
+    frame = (frame + 1) % 8
+    delay(0.1)  
 
 # for x in range(0, 800, 5):
 #     clear_canvas()
