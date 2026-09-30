@@ -7,9 +7,14 @@ WIDTH, HEIGHT = 800, 600
 def main():
     p.open_canvas(WIDTH, HEIGHT)
     try:
-        p.clear_canvas()
-        p.update_canvas()
-        p.delay(0.1)
+        running = True
+        while running:
+            for event in p.get_events():
+                if event.type == p.SDL_QUIT:
+                    running = False
+            p.clear_canvas()
+            p.update_canvas()
+            p.delay(1 / 60)
     finally:
         p.close_canvas()
 
