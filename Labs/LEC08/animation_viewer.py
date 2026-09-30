@@ -98,6 +98,18 @@ class Playback:
         self.deadline = now + 0.12
 
 
+def validate_sheet(sheet):
+    if len(ANCHORS) != len(ANIMATIONS):
+        raise ValueError("Each animation needs its own anchors.")
+    for (name, frames), (centers, baseline) in zip(ANIMATIONS, ANCHORS):
+        if not frames or len(frames) != len(centers):
+            raise ValueError(f"{name}: frame/anchor count mismatch")
+        for left, top, width, height in frames:
+            if not (width > 0 and height > 0 and left >= 0 and top >= 0
+                    and left + width <= sheet.w and top + height <= sheet.h):
+                raise ValueError(f"{name}: frame outside sprite sheet")
+
+
 def main():
     p.open_canvas(WIDTH, HEIGHT)
     try:
