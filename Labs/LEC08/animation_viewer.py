@@ -1,5 +1,8 @@
 """DRILL 08: AI-assisted animation viewer built incrementally."""
+from pathlib import Path
 import pico2d as p
+
+SPRITE_PATH = Path(__file__).with_name("samurai_animations.png")
 
 WIDTH, HEIGHT = 800, 600
 
