@@ -76,16 +76,25 @@ class Playback:
         self.completed_repeats = 0
         self.deadline = now + 0.12
 
+    @property
+    def holding(self):
+        return self.completed_repeats == 5
+
     def update(self, now):
         if now < self.deadline:
             return
-        self.frame_index += 1
-        if self.frame_index == len(ANIMATIONS[self.animation_index][1]):
+        if self.holding:
+            self.completed_repeats = 0
             self.frame_index = 0
+            self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
+        elif self.frame_index + 1 < len(ANIMATIONS[self.animation_index][1]):
+            self.frame_index += 1
+        else:
             self.completed_repeats += 1
-            if self.completed_repeats == 5:
-                self.completed_repeats = 0
-                self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
+            if self.holding:
+                self.deadline = now + 1.0
+                return
+            self.frame_index = 0
         self.deadline = now + 0.12
 
 
