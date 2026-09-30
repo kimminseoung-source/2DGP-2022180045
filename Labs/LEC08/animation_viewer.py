@@ -45,11 +45,27 @@ ANIMATIONS = [
 ]
 
 
-def draw_frame(sheet, rect):
+# Image-space body centers and row baselines keep unequal crops from shifting.
+ANCHORS = [
+    ([132, 411, 727, 1033, 1316], 225),
+    ([131, 413, 726, 1033, 1314, 1585, 1873], 470),
+    ([131, 420, 713, 1020, 1314, 1585, 1873, 2147], 708),
+    ([133, 424, 714, 1006, 1297, 1584, 1874, 2155], 948),
+    ([129, 421, 704, 1000, 1290, 1568, 1851, 2142, 2437, 2725], 1176),
+    ([130, 420, 705, 1000, 1290, 1585], 1429),
+]
+SCALE = 1.85
+BASELINE = 120
+
+
+def draw_frame(sheet, rect, animation_index, frame_index):
     # rect uses top-left image coordinates; pico2d clips from bottom-left.
     left, top, width, height = rect
+    centers, baseline = ANCHORS[animation_index]
+    x = WIDTH / 2 + (left + width / 2 - centers[frame_index]) * SCALE
+    y = BASELINE + (baseline - top - height / 2) * SCALE
     sheet.clip_draw(left, sheet.h - top - height, width, height,
-                    WIDTH / 2, HEIGHT / 2, width * 1.85, height * 1.85)
+                    x, y, width * SCALE, height * SCALE)
 
 
 def main():
