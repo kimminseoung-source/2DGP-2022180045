@@ -57,6 +57,9 @@ ANCHORS = [
 ]
 SCALE = 1.85
 BASELINE = 120
+FRAME_SECONDS = 0.12
+REPEAT_COUNT = 5
+HOLD_SECONDS = 1.0
 
 
 def draw_frame(sheet, rect, animation_index, frame_index):
@@ -76,11 +79,11 @@ class Playback:
         self.frame_index = 0
         self.completed_repeats = 0
         self.cycles = 0
-        self.deadline = now + 0.12
+        self.deadline = now + FRAME_SECONDS
 
     @property
     def holding(self):
-        return self.completed_repeats == 5
+        return self.completed_repeats == REPEAT_COUNT
 
     def update(self, now):
         if now < self.deadline:
@@ -96,10 +99,10 @@ class Playback:
         else:
             self.completed_repeats += 1
             if self.holding:
-                self.deadline = now + 1.0
+                self.deadline = now + HOLD_SECONDS
                 return
             self.frame_index = 0
-        self.deadline = now + 0.12
+        self.deadline = now + FRAME_SECONDS
 
 
 def validate_sheet(sheet):
@@ -115,6 +118,8 @@ def validate_sheet(sheet):
 
 
 def main(cycles=0):
+    if not SPRITE_PATH.is_file():
+        raise FileNotFoundError(f"Sprite sheet not found: {SPRITE_PATH}")
     p.open_canvas(WIDTH, HEIGHT)
     try:
         sheet = p.load_image(str(SPRITE_PATH))
