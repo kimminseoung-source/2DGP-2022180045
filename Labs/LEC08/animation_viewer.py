@@ -73,6 +73,7 @@ class Playback:
     def __init__(self, now):
         self.animation_index = 0
         self.frame_index = 0
+        self.completed_repeats = 0
         self.deadline = now + 0.12
 
     def update(self, now):
