@@ -82,7 +82,10 @@ class Playback:
         self.frame_index += 1
         if self.frame_index == len(ANIMATIONS[self.animation_index][1]):
             self.frame_index = 0
-            self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
+            self.completed_repeats += 1
+            if self.completed_repeats == 5:
+                self.completed_repeats = 0
+                self.animation_index = (self.animation_index + 1) % len(ANIMATIONS)
         self.deadline = now + 0.12
 
 
