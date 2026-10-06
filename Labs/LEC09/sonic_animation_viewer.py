@@ -77,9 +77,13 @@ def validate_animations(animations, image_width, image_height):
                 raise ValueError(f"이미지 범위를 벗어난 프레임: {animation.name} {frame}")
 
 
-def frame_row(rectangles, baseline):
+def frame_row(rectangles, baseline, centers=None):
     """행의 바닥 기준선을 공유하되 프레임 크기는 각각 유지한다."""
-    return tuple(make_frame(*rectangle, baseline=baseline) for rectangle in rectangles)
+    if centers is not None and len(centers) != len(rectangles):
+        raise ValueError("프레임 수와 몸통 기준점 수가 다릅니다.")
+    return tuple(make_frame(*rectangle, baseline=baseline,
+                            anchor_x=None if centers is None else centers[index])
+                 for index, rectangle in enumerate(rectangles))
 
 
 ANIMATIONS = (
@@ -103,11 +107,11 @@ ANIMATIONS = (
         (97, 80, 37, 37), (135, 80, 32, 35), (170, 79, 32, 38),
         (206, 79, 26, 38), (238, 80, 24, 37), (263, 80, 30, 37),
         (295, 80, 36, 37), (334, 80, 32, 36), (370, 79, 29, 38),
-    ), 118)),
+    ), 118, (16, 16, 18, 21, 20, 20, 16, 16, 18, 21, 20, 20))),
     Animation("가속", frame_row((
         (1, 124, 33, 40), (39, 124, 35, 39), (89, 125, 35, 38),
         (130, 121, 34, 42), (181, 122, 34, 41), (228, 122, 33, 40),
-    ), 163)),
+    ), 164, (22, 23, 23, 23, 19, 19))),
     Animation("몸 회전", frame_row((
         (1, 169, 29, 30), (35, 167, 29, 31), (67, 169, 30, 29),
         (98, 169, 31, 29), (131, 168, 29, 30), (162, 168, 29, 31),
@@ -121,20 +125,20 @@ ANIMATIONS = (
     Animation("달리기", frame_row((
         (1, 239, 29, 35), (36, 239, 30, 35), (74, 239, 31, 35),
         (111, 238, 31, 36), (149, 239, 30, 35), (186, 238, 31, 36),
-    ), 274)),
+    ), 274, (18, 18, 21, 21, 21, 21))),
     Animation("빠른 달리기", frame_row((
         (1, 283, 29, 35), (36, 283, 30, 35), (72, 286, 39, 31),
         (123, 285, 39, 32), (172, 286, 39, 31), (218, 285, 38, 32),
-    ), 317)),
+    ), 318, (18, 18, 26, 26, 26, 26))),
     Animation("방향 돌기", frame_row((
         (1, 326, 24, 45), (31, 327, 29, 44), (65, 327, 20, 44),
         (90, 327, 25, 43), (119, 327, 25, 43), (149, 327, 20, 44),
-    ), 370)),
+    ), 371, (12, 15, 10, 12, 12, 10))),
     Animation("넘어지기", frame_row(((184, 341, 40, 28), (232, 341, 39, 27)), 370)),
     Animation("균형 잡기", frame_row((
         (1, 379, 27, 38), (31, 379, 31, 36), (64, 379, 31, 36), (99, 377, 33, 38),
         (136, 379, 32, 36), (176, 379, 33, 36), (217, 379, 33, 36), (254, 378, 33, 36),
-    ), 417)),
+    ), 417, (14, 13, 14, 17, 14, 14, 14, 14))),
     Animation("놀라기", frame_row(((6, 429, 34, 40), (49, 426, 34, 43)), 469)),
     Animation("손 모으기", frame_row(((96, 427, 23, 39), (125, 427, 23, 39)), 468)),
 )
@@ -198,7 +202,14 @@ def display_layout(animations):
     max_height = max(frame.height for frame in frames)
     scale = min(WIDTH * DISPLAY_FRACTION / max_width,
                 HEIGHT * DISPLAY_FRACTION / max_height)
-    return scale, WIDTH / 2, (HEIGHT - max_height * scale) / 2
+    # 잘라내기 중심이 아닌 기준점에 정렬한 전체 프레임의 외곽을 계산한다.
+    left = min(-frame.anchor_x for frame in frames)
+    right = max(frame.width - frame.anchor_x for frame in frames)
+    bottom = min(frame.anchor_y - frame.height for frame in frames)
+    top = max(frame.anchor_y for frame in frames)
+    scale = min(scale, WIDTH * 0.9 / (right - left), HEIGHT * 0.9 / (top - bottom))
+    return (scale, WIDTH / 2 - (left + right) * scale / 2,
+            HEIGHT / 2 - (bottom + top) * scale / 2)
 
 
 def draw_frame(sheet, frame, layout):
