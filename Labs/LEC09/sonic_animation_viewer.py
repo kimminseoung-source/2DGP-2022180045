@@ -112,6 +112,8 @@ class Playback:
             self.frame_elapsed -= interval
             if self.frame_index + 1 < len(self.animation.frames):
                 self.frame_index += 1
+            else:
+                self.frame_index = 0
 
 
 def display_layout(animations):
