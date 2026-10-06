@@ -24,6 +24,7 @@
 투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
 """
 from pathlib import Path
+import sys
 
 import pico2d as p
 
@@ -40,7 +41,14 @@ def main():
     """뷰어의 실행 진입점."""
     p.open_canvas(WIDTH, HEIGHT)
     try:
-        sheet = p.load_image(str(SPRITE_PATH))
+        try:
+            if not SPRITE_PATH.is_file():
+                raise FileNotFoundError("이미지 파일이 없습니다.")
+            sheet = p.load_image(str(SPRITE_PATH))
+        except (OSError, ValueError) as error:
+            print(f"이미지 로딩 실패: {SPRITE_PATH}\n원인: {error or 'PNG를 읽을 수 없습니다.'}",
+                  file=sys.stderr)
+            return 1
         running = True
         while running:
             for event in p.get_events():
