@@ -115,6 +115,8 @@ class Playback:
     def update(self, delta_seconds):
         if self.holding:
             self.hold_elapsed += delta_seconds
+            if self.hold_elapsed >= HOLD_SECONDS:
+                self.next_animation()
             return
         interval = 1 / self.animation.fps
         self.frame_elapsed += min(delta_seconds, interval)
@@ -131,6 +133,16 @@ class Playback:
                     self.holding = True
                     self.hold_elapsed = 0.0
                     self.frame_elapsed = 0.0
+
+    def next_animation(self):
+        if self.animation_index + 1 >= len(self.animations):
+            return
+        self.animation_index += 1
+        self.frame_index = 0
+        self.completed_repeats = 0
+        self.frame_elapsed = 0.0
+        self.hold_elapsed = 0.0
+        self.holding = False
 
 
 def display_layout(animations):
