@@ -24,6 +24,13 @@
 투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
 """
 
+WIDTH, HEIGHT = 800, 600
+REPEAT_COUNT = 5
+HOLD_SECONDS = 0.5
+DEFAULT_FPS = 10
+DISPLAY_FRACTION = 0.65
+RENDER_FPS = 60
+
 
 def main():
     """뷰어의 실행 진입점."""
