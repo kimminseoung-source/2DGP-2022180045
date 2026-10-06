@@ -149,6 +149,7 @@ class Playback:
         self.completed_repeats = 0
         self.holding = False
         self.hold_elapsed = 0.0
+        self.cycles = 0
 
     @property
     def animation(self):
@@ -181,9 +182,9 @@ class Playback:
                     self.frame_elapsed = 0.0
 
     def next_animation(self):
-        if self.animation_index + 1 >= len(self.animations):
-            return
-        self.animation_index += 1
+        self.animation_index = (self.animation_index + 1) % len(self.animations)
+        if self.animation_index == 0:
+            self.cycles += 1
         self.frame_index = 0
         self.completed_repeats = 0
         self.frame_elapsed = 0.0
