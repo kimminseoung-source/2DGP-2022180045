@@ -37,8 +37,16 @@ def main():
     """뷰어의 실행 진입점."""
     p.open_canvas(WIDTH, HEIGHT)
     try:
-        p.clear_canvas()
-        p.update_canvas()
+        running = True
+        while running:
+            for event in p.get_events():
+                if event.type == p.SDL_QUIT:
+                    running = False
+            if not running:
+                break
+            p.clear_canvas()
+            p.update_canvas()
+            p.delay(1 / RENDER_FPS)
     finally:
         p.close_canvas()
     return 0
