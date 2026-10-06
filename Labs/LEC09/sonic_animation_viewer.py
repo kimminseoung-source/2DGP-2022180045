@@ -90,6 +90,30 @@ ANIMATIONS = (
 )
 
 
+class Playback:
+    def __init__(self, animations=ANIMATIONS):
+        self.animations = animations
+        self.animation_index = 0
+        self.frame_index = 0
+        self.frame_elapsed = 0.0
+
+    @property
+    def animation(self):
+        return self.animations[self.animation_index]
+
+    @property
+    def frame(self):
+        return self.animation.frames[self.frame_index]
+
+    def update(self, delta_seconds):
+        interval = 1 / self.animation.fps
+        self.frame_elapsed += min(delta_seconds, interval)
+        if self.frame_elapsed >= interval:
+            self.frame_elapsed -= interval
+            if self.frame_index + 1 < len(self.animation.frames):
+                self.frame_index += 1
+
+
 def display_layout(animations):
     frames = [frame for animation in animations for frame in animation.frames]
     max_width = max(frame.width for frame in frames)
@@ -122,6 +146,7 @@ def main():
                   file=sys.stderr)
             return 1
         running = True
+        playback = Playback()
         previous_time = perf_counter()
         while running:
             loop_start = perf_counter()
@@ -133,8 +158,9 @@ def main():
                     running = False
             if not running:
                 break
+            playback.update(delta_seconds)
             p.clear_canvas()
-            draw_frame(sheet, ANIMATIONS[0].frames[0], layout)
+            draw_frame(sheet, playback.frame, layout)
             p.update_canvas()
             p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
     finally:
