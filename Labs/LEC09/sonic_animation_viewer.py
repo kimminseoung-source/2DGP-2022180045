@@ -96,6 +96,7 @@ class Playback:
         self.animation_index = 0
         self.frame_index = 0
         self.frame_elapsed = 0.0
+        self.completed_repeats = 0
 
     @property
     def animation(self):
@@ -106,6 +107,8 @@ class Playback:
         return self.animation.frames[self.frame_index]
 
     def update(self, delta_seconds):
+        if self.completed_repeats == REPEAT_COUNT:
+            return
         interval = 1 / self.animation.fps
         self.frame_elapsed += min(delta_seconds, interval)
         if self.frame_elapsed >= interval:
@@ -113,7 +116,10 @@ class Playback:
             if self.frame_index + 1 < len(self.animation.frames):
                 self.frame_index += 1
             else:
-                self.frame_index = 0
+                # 마지막 프레임의 표시 시간이 끝나야 한 회 완료이다.
+                self.completed_repeats += 1
+                if self.completed_repeats < REPEAT_COUNT:
+                    self.frame_index = 0
 
 
 def display_layout(animations):
