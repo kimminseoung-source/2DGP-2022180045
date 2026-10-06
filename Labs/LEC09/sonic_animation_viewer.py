@@ -81,8 +81,21 @@ ANIMATIONS = (
 )
 
 
-def draw_frame(sheet, frame):
-    sheet.clip_draw(*frame.clip_rect(sheet.h), WIDTH / 2, HEIGHT / 2)
+def display_layout(animations):
+    frames = [frame for animation in animations for frame in animation.frames]
+    max_width = max(frame.width for frame in frames)
+    max_height = max(frame.height for frame in frames)
+    scale = min(WIDTH * DISPLAY_FRACTION / max_width,
+                HEIGHT * DISPLAY_FRACTION / max_height)
+    return scale, WIDTH / 2, (HEIGHT - max_height * scale) / 2
+
+
+def draw_frame(sheet, frame, layout):
+    scale, origin_x, origin_y = layout
+    x = origin_x + (frame.width / 2 - frame.anchor_x) * scale
+    y = origin_y + (frame.anchor_y - frame.height / 2) * scale
+    sheet.clip_draw(*frame.clip_rect(sheet.h), x, y,
+                    frame.width * scale, frame.height * scale)
 
 
 def main():
@@ -94,6 +107,7 @@ def main():
                 raise FileNotFoundError("이미지 파일이 없습니다.")
             sheet = p.load_image(str(SPRITE_PATH))
             validate_animations(ANIMATIONS, sheet.w, sheet.h)
+            layout = display_layout(ANIMATIONS)
         except (OSError, ValueError) as error:
             print(f"이미지 로딩 실패: {SPRITE_PATH}\n원인: {error or 'PNG를 읽을 수 없습니다.'}",
                   file=sys.stderr)
@@ -107,7 +121,7 @@ def main():
             if not running:
                 break
             p.clear_canvas()
-            draw_frame(sheet, ANIMATIONS[0].frames[0])
+            draw_frame(sheet, ANIMATIONS[0].frames[0], layout)
             p.update_canvas()
             p.delay(1 / RENDER_FPS)
     finally:
