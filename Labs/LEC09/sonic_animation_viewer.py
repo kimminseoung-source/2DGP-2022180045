@@ -87,6 +87,10 @@ ANIMATIONS = (
         make_frame(150, 40, 30, 38, 14, 78),
         make_frame(182, 40, 31, 38, 14, 78),
     )),
+    Animation("위 바라보기", (
+        make_frame(213, 39, 31, 38, 15, 78),
+        make_frame(244, 39, 25, 38, 12, 78),
+    )),
 )
 
 
