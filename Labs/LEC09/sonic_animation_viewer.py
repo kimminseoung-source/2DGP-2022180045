@@ -39,6 +39,13 @@ HOLD_SECONDS = 0.5
 DEFAULT_FPS = 10
 DISPLAY_FRACTION = 0.65
 RENDER_FPS = 60
+MOVEMENT_MARGIN = 32
+WALK_SPEED = 100
+ACCELERATION_SPEED = 180
+ROLL_SPEED = 160
+BALL_SPEED = 200
+RUN_SPEED = 240
+FAST_RUN_SPEED = 320
 SPRITE_PATH = Path(__file__).resolve().with_name("sonic-sprite.png")
 
 
@@ -61,6 +68,7 @@ class Animation:
     name: str
     frames: tuple[Frame, ...]
     fps: float = DEFAULT_FPS
+    movement_speed: float = 0.0  # 화면 픽셀/초, 0이면 제자리 동작
 
 
 def make_frame(left, top, width, height, anchor_x=None, baseline=None):
@@ -73,7 +81,8 @@ def validate_animations(animations, image_width, image_height):
     if not animations:
         raise ValueError("재생할 동작이 없습니다.")
     for animation in animations:
-        if not animation.frames or not math.isfinite(animation.fps) or animation.fps <= 0:
+        if (not animation.frames or not math.isfinite(animation.fps) or animation.fps <= 0 or
+                not math.isfinite(animation.movement_speed) or animation.movement_speed < 0):
             raise ValueError(f"잘못된 동작 정의: {animation.name}")
         for frame in animation.frames:
             if not (frame.left >= 0 and frame.top >= 0 and frame.width > 0 and
@@ -112,29 +121,29 @@ ANIMATIONS = (
         (97, 80, 37, 37), (135, 80, 32, 35), (170, 79, 32, 38),
         (206, 79, 26, 38), (238, 80, 24, 37), (263, 80, 30, 37),
         (295, 80, 36, 37), (334, 80, 32, 36), (370, 79, 29, 38),
-    ), 118, (16, 16, 18, 21, 20, 20, 16, 16, 18, 21, 20, 20))),
+    ), 118, (16, 16, 18, 21, 20, 20, 16, 16, 18, 21, 20, 20)), movement_speed=WALK_SPEED),
     Animation("가속", frame_row((
         (1, 124, 33, 40), (39, 124, 35, 39), (89, 125, 35, 38),
         (130, 121, 34, 42), (181, 122, 34, 41), (228, 122, 33, 40),
-    ), 164, (22, 23, 23, 23, 19, 19))),
+    ), 164, (22, 23, 23, 23, 19, 19)), movement_speed=ACCELERATION_SPEED),
     Animation("몸 회전", frame_row((
         (1, 169, 29, 30), (35, 167, 29, 31), (67, 169, 30, 29),
         (98, 169, 31, 29), (131, 168, 29, 30), (162, 168, 29, 31),
         (193, 170, 30, 29), (230, 170, 31, 29),
-    ), 200)),
+    ), 200), movement_speed=ROLL_SPEED),
     Animation("공 회전", (
         make_frame(268, 170, 30, 30, baseline=200),
         *frame_row(((1, 206, 30, 27), (36, 206, 29, 27), (70, 206, 29, 27),
                     (105, 206, 29, 27), (139, 206, 29, 27), (174, 206, 29, 27)), 233),
-    )),
+    ), movement_speed=BALL_SPEED),
     Animation("달리기", frame_row((
         (1, 239, 29, 35), (36, 239, 30, 35), (74, 239, 31, 35),
         (111, 238, 31, 36), (149, 239, 30, 35), (186, 238, 31, 36),
-    ), 274, (18, 18, 21, 21, 21, 21))),
+    ), 274, (18, 18, 21, 21, 21, 21)), movement_speed=RUN_SPEED),
     Animation("빠른 달리기", frame_row((
         (1, 283, 29, 35), (36, 283, 30, 35), (72, 286, 39, 31),
         (123, 285, 39, 32), (172, 286, 39, 31), (218, 285, 38, 32),
-    ), 318, (18, 18, 26, 26, 26, 26))),
+    ), 318, (18, 18, 26, 26, 26, 26)), movement_speed=FAST_RUN_SPEED),
     Animation("방향 돌기", frame_row((
         (1, 326, 24, 45), (31, 327, 29, 44), (65, 327, 20, 44),
         (90, 327, 25, 43), (119, 327, 25, 43), (149, 327, 20, 44),
@@ -150,10 +159,13 @@ ANIMATIONS = (
 
 
 class Playback:
-    def __init__(self, animations=ANIMATIONS):
+    def __init__(self, animations=ANIMATIONS, layout=None):
         if not animations:
             raise ValueError("재생할 동작이 없습니다.")
         self.animations = animations
+        self.layout = display_layout(animations) if layout is None else layout
+        self.position_x = self.layout[1]
+        self.direction = 1
         self.animation_index = 0
         self.frame_index = 0
         self.frame_elapsed = 0.0
@@ -179,6 +191,12 @@ class Playback:
                 self.next_animation()
             return
         interval = 1 / self.animation.fps
+        if self.animation.movement_speed:
+            # 프레임 재생과 같은 지연 보정으로 한 번의 갱신에서 순간이동하지 않는다.
+            distance = self.animation.movement_speed * min(delta_seconds, interval)
+            bounds = movement_bounds(self.animation, self.layout)
+            self.position_x, self.direction = reflected_movement(
+                self.position_x, self.direction, distance, *bounds)
         # 긴 창 이동/시스템 지연에서는 한 프레임만 진행한다.
         # 보이지 않은 프레임과 동작을 건너뛰지 않고 다음 표시 시간을 새로 보장한다.
         if delta_seconds >= interval:
@@ -208,6 +226,28 @@ class Playback:
         self.frame_elapsed = 0.0
         self.hold_elapsed = 0.0
         self.holding = False
+        self.position_x = self.layout[1]
+        self.direction = 1
+
+
+def movement_bounds(animation, layout):
+    """양쪽 방향과 모든 프레임의 팔다리·효과를 포함한 안전한 기준점 범위."""
+    scale = layout[0]
+    radius = max(max(abs(f.anchor_x), abs(f.width - f.anchor_x))
+                 for f in animation.frames) * scale
+    return MOVEMENT_MARGIN + radius, WIDTH - MOVEMENT_MARGIN - radius
+
+
+def reflected_movement(position, direction, distance, left, right):
+    """경계 너머의 이동량을 반사하여 속도를 유지하고 진행 방향을 갱신한다."""
+    span = right - left
+    if span <= 0:
+        return (left + right) / 2, direction
+    phase = position - left if direction > 0 else 2 * span - (position - left)
+    phase = (phase + distance) % (2 * span)
+    if phase < span:
+        return left + phase, 1
+    return right - (phase - span), -1
 
 
 def display_layout(animations):
@@ -226,12 +266,17 @@ def display_layout(animations):
             HEIGHT / 2 - (bottom + top) * scale / 2)
 
 
-def draw_frame(sheet, frame, layout):
+def draw_frame(sheet, frame, layout, position_x=None, direction=1):
     scale, origin_x, origin_y = layout
-    x = origin_x + (frame.width / 2 - frame.anchor_x) * scale
+    origin_x = origin_x if position_x is None else position_x
+    x = origin_x + direction * (frame.width / 2 - frame.anchor_x) * scale
     y = origin_y + (frame.anchor_y - frame.height / 2) * scale
-    sheet.clip_draw(*frame.clip_rect(sheet.h), x, y,
-                    frame.width * scale, frame.height * scale)
+    if direction < 0:
+        sheet.clip_composite_draw(*frame.clip_rect(sheet.h), 0, "h", x, y,
+                                  frame.width * scale, frame.height * scale)
+    else:
+        sheet.clip_draw(*frame.clip_rect(sheet.h), x, y,
+                        frame.width * scale, frame.height * scale)
 
 
 def quit_requested(events):
@@ -264,7 +309,7 @@ def run_viewer(cycles=None, sprite_path=SPRITE_PATH):
                   file=sys.stderr)
             return 1
         running = True
-        playback = Playback()
+        playback = Playback(layout=layout)
         previous_time = perf_counter()
         while running:
             loop_start = perf_counter()
@@ -277,7 +322,7 @@ def run_viewer(cycles=None, sprite_path=SPRITE_PATH):
             if cycles is not None and playback.cycles >= cycles:
                 break
             clear_background()
-            draw_frame(sheet, playback.frame, layout)
+            draw_frame(sheet, playback.frame, layout, playback.position_x, playback.direction)
             p.update_canvas()
             p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
     finally:
@@ -312,6 +357,8 @@ def self_test():
             for actions in ((), (Animation("빈 동작", ()),),
                             (Animation("속도 0", (f,), 0),),
                             (Animation("무한 속도", (f,), math.inf),),
+                            (Animation("음수 이동 속도", (f,), movement_speed=-1),),
+                            (Animation("무한 이동 속도", (f,), movement_speed=math.inf),),
                             (Animation("영역 오류", (make_frame(398, 0, 2, 3),)),)):
                 with self.assertRaises(ValueError):
                     validate_animations(actions, 399, 525)
@@ -426,6 +473,78 @@ def self_test():
                 self.assertFalse(quit_requested([
                     SimpleNamespace(type=p.SDL_KEYDOWN, key=p.SDLK_SPACE)]))
                 self.assertFalse(quit_requested([]))
+
+        def test_motion_speeds_and_stationary_actions(self):
+            layout = display_layout(ANIMATIONS)
+            moving = {a.name for a in ANIMATIONS if a.movement_speed}
+            self.assertEqual(moving, {"걷기", "가속", "몸 회전", "공 회전", "달리기", "빠른 달리기"})
+            for action in ANIMATIONS:
+                player = Playback((action,), layout)
+                start = player.position_x
+                player.update(.05)
+                self.assertAlmostEqual(player.position_x - start, action.movement_speed * .05)
+                self.assertEqual(player.direction, 1)
+            self.assertLess(WALK_SPEED, RUN_SPEED)
+            self.assertLess(RUN_SPEED, FAST_RUN_SPEED)
+
+        def test_reflection_and_all_moving_frame_bounds(self):
+            self.assertEqual(reflected_movement(95, 1, 10, 0, 100), (95, -1))
+            self.assertEqual(reflected_movement(5, -1, 10, 0, 100), (5, 1))
+            self.assertEqual(reflected_movement(20, -1, 250, 0, 100), (30, 1))
+            layout = display_layout(ANIMATIONS)
+            scale = layout[0]
+            for action in ANIMATIONS:
+                if not action.movement_speed:
+                    continue
+                left, right = movement_bounds(action, layout)
+                for position in (left, (left + right) / 2, right):
+                    for direction in (-1, 1):
+                        for f in action.frames:
+                            center = position + direction * (f.width / 2 - f.anchor_x) * scale
+                            self.assertGreaterEqual(center - f.width * scale / 2,
+                                                    MOVEMENT_MARGIN - 1e-9)
+                            self.assertLessEqual(center + f.width * scale / 2,
+                                                 WIDTH - MOVEMENT_MARGIN + 1e-9)
+                player = Playback((action,), layout)
+                directions = set()
+                for _ in range(200):
+                    player.update(.025)
+                    directions.add(player.direction)
+                    self.assertGreaterEqual(player.position_x, left)
+                    self.assertLessEqual(player.position_x, right)
+                self.assertIn(-1, directions)
+
+        def test_motion_stops_during_hold_and_resets_between_actions(self):
+            layout = display_layout(ANIMATIONS)
+            player = Playback((ANIMATIONS[4], ANIMATIONS[0]), layout)
+            for _ in range(len(player.animation.frames) * REPEAT_COUNT):
+                player.update(.1)
+            self.assertTrue(player.holding)
+            final_position, final_direction = player.position_x, player.direction
+            player.update(.499)
+            self.assertEqual((player.position_x, player.direction), (final_position, final_direction))
+            player.update(.001)
+            self.assertEqual(player.animation_index, 1)
+            self.assertEqual((player.position_x, player.direction), (layout[1], 1))
+            player.update(.1)
+            self.assertEqual(player.position_x, layout[1])
+            player = Playback((ANIMATIONS[4],), layout)
+            player.update(20)
+            self.assertAlmostEqual(player.position_x - layout[1], WALK_SPEED / DEFAULT_FPS)
+
+        def test_rendering_faces_movement_direction(self):
+            calls = []
+            sheet = SimpleNamespace(h=525,
+                                    clip_draw=lambda *args: calls.append(("normal", args)),
+                                    clip_composite_draw=lambda *args: calls.append(("flipped", args)))
+            frame = ANIMATIONS[4].frames[0]
+            layout = display_layout(ANIMATIONS)
+            draw_frame(sheet, frame, layout, 400, 1)
+            draw_frame(sheet, frame, layout, 400, -1)
+            self.assertEqual(calls[0][0], "normal")
+            self.assertEqual(calls[1][0], "flipped")
+            self.assertEqual(calls[1][1][5], "h")
+            self.assertAlmostEqual(calls[0][1][4] + calls[1][1][6], 800)
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ViewerTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
