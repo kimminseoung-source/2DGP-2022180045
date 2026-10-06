@@ -23,6 +23,7 @@
 프레임 경계는 고정 격자가 아니다. 첫 행은 신발이 서로 맞닿으므로
 투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
 """
+from dataclasses import dataclass
 from pathlib import Path
 import sys
 
@@ -35,6 +36,44 @@ DEFAULT_FPS = 10
 DISPLAY_FRACTION = 0.65
 RENDER_FPS = 60
 SPRITE_PATH = Path(__file__).resolve().with_name("sonic-sprite.png")
+
+
+@dataclass(frozen=True)
+class Frame:
+    left: int
+    top: int
+    width: int
+    height: int
+    anchor_x: float
+    anchor_y: float
+
+    def clip_rect(self, image_height):
+        """좌상단 원본 좌표를 pico2d의 좌하단 잘라내기 좌표로 변환."""
+        return self.left, image_height - self.top - self.height, self.width, self.height
+
+
+@dataclass(frozen=True)
+class Animation:
+    name: str
+    frames: tuple[Frame, ...]
+    fps: float = DEFAULT_FPS
+
+
+def make_frame(left, top, width, height, anchor_x=None, baseline=None):
+    return Frame(left, top, width, height,
+                 width / 2 if anchor_x is None else anchor_x,
+                 height if baseline is None else baseline - top)
+
+
+def validate_animations(animations, image_width, image_height):
+    for animation in animations:
+        if not animation.frames or animation.fps <= 0:
+            raise ValueError(f"잘못된 동작 정의: {animation.name}")
+        for frame in animation.frames:
+            if not (frame.left >= 0 and frame.top >= 0 and frame.width > 0 and
+                    frame.height > 0 and frame.left + frame.width <= image_width and
+                    frame.top + frame.height <= image_height):
+                raise ValueError(f"이미지 범위를 벗어난 프레임: {animation.name} {frame}")
 
 
 def main():
