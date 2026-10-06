@@ -97,6 +97,8 @@ class Playback:
         self.frame_index = 0
         self.frame_elapsed = 0.0
         self.completed_repeats = 0
+        self.holding = False
+        self.hold_elapsed = 0.0
 
     @property
     def animation(self):
@@ -107,7 +109,8 @@ class Playback:
         return self.animation.frames[self.frame_index]
 
     def update(self, delta_seconds):
-        if self.completed_repeats == REPEAT_COUNT:
+        if self.holding:
+            self.hold_elapsed += delta_seconds
             return
         interval = 1 / self.animation.fps
         self.frame_elapsed += min(delta_seconds, interval)
@@ -120,6 +123,10 @@ class Playback:
                 self.completed_repeats += 1
                 if self.completed_repeats < REPEAT_COUNT:
                     self.frame_index = 0
+                else:
+                    self.holding = True
+                    self.hold_elapsed = 0.0
+                    self.frame_elapsed = 0.0
 
 
 def display_layout(animations):
