@@ -146,6 +146,13 @@ def draw_frame(sheet, frame, layout):
                     frame.width * scale, frame.height * scale)
 
 
+def quit_requested(events):
+    """재생 상태와 관계없이 매 루프에서 종료 입력을 처리한다."""
+    return any(event.type == p.SDL_QUIT or
+               event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE
+               for event in events)
+
+
 def main():
     """뷰어의 실행 진입점."""
     p.open_canvas(WIDTH, HEIGHT)
@@ -167,10 +174,7 @@ def main():
             loop_start = perf_counter()
             delta_seconds = loop_start - previous_time
             previous_time = loop_start
-            for event in p.get_events():
-                if (event.type == p.SDL_QUIT or
-                        event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
-                    running = False
+            running = not quit_requested(p.get_events())
             if not running:
                 break
             playback.update(delta_seconds)
