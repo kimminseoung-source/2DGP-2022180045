@@ -292,24 +292,45 @@ def clear_background():
     p.SDL_RenderClear(canvas.renderer)
 
 
-def run_viewer(cycles=None, sprite_path=SPRITE_PATH):
+def ordered_animations(first_name=None):
+    if first_name is None:
+        return ANIMATIONS
+    for index, animation in enumerate(ANIMATIONS):
+        if animation.name == first_name:
+            return ANIMATIONS[index:] + ANIMATIONS[:index]
+    raise ValueError(f"알 수 없는 동작: {first_name}")
+
+
+def viewer_title(playback):
+    if playback.holding:
+        state = "0.5초 대기"
+    elif playback.animation.movement_speed:
+        state = "오른쪽 이동" if playback.direction > 0 else "왼쪽 이동"
+    else:
+        state = "제자리 동작"
+    repeat = min(playback.completed_repeats + 1, REPEAT_COUNT)
+    return f"소닉 뷰어 | {playback.animation.name} | {state} | {repeat}/{REPEAT_COUNT}"
+
+
+def run_viewer(cycles=None, sprite_path=SPRITE_PATH, start_animation=None):
     """옵션을 생략하면 무한 반복. cycles는 검증용 전체 순환 횟수."""
     sheet = None
+    animations = ordered_animations(start_animation)
     p.open_canvas(WIDTH, HEIGHT)
     try:
         try:
             if not sprite_path.is_file():
                 raise FileNotFoundError("이미지 파일이 없습니다.")
             sheet = p.load_image(str(sprite_path))
-            validate_animations(ANIMATIONS, sheet.w, sheet.h)
-            layout = display_layout(ANIMATIONS)
+            validate_animations(animations, sheet.w, sheet.h)
+            layout = display_layout(animations)
         except (OSError, ValueError) as error:
             reason = str(error) or p.IMG_GetError().decode("utf-8", errors="replace")
             print(f"이미지 로딩 실패: {sprite_path}\n원인: {reason}",
                   file=sys.stderr)
             return 1
         running = True
-        playback = Playback(layout=layout)
+        playback = Playback(animations, layout=layout)
         previous_time = perf_counter()
         while running:
             loop_start = perf_counter()
@@ -322,6 +343,8 @@ def run_viewer(cycles=None, sprite_path=SPRITE_PATH):
             if cycles is not None and playback.cycles >= cycles:
                 break
             clear_background()
+            # pico2d의 FPS 제목을 현재 동작 상태로 갱신한다.
+            p.SDL_SetWindowTitle(canvas.window, viewer_title(playback).encode("utf-8"))
             draw_frame(sheet, playback.frame, layout, playback.position_x, playback.direction)
             p.update_canvas()
             p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
@@ -546,6 +569,26 @@ def self_test():
             self.assertEqual(calls[1][1][5], "h")
             self.assertAlmostEqual(calls[0][1][4] + calls[1][1][6], 800)
 
+        def test_start_animation_preserves_full_cycle(self):
+            self.assertIs(ordered_animations(), ANIMATIONS)
+            actions = ordered_animations("걷기")
+            self.assertEqual(actions[0].name, "걷기")
+            self.assertEqual(len(actions), 15)
+            self.assertEqual(sum(len(a.frames) for a in actions), 76)
+            self.assertEqual(set(a.name for a in actions), set(a.name for a in ANIMATIONS))
+            with self.assertRaises(ValueError):
+                ordered_animations("없는 동작")
+
+        def test_title_distinguishes_movement_and_hold(self):
+            player = Playback()
+            self.assertIn("제자리 동작", viewer_title(player))
+            player = Playback(ordered_animations("걷기"))
+            self.assertIn("걷기 | 오른쪽 이동", viewer_title(player))
+            player.direction = -1
+            self.assertIn("왼쪽 이동", viewer_title(player))
+            player.holding = True
+            self.assertIn("0.5초 대기", viewer_title(player))
+
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ViewerTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return 0 if result.wasSuccessful() else 1
@@ -562,8 +605,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="소닉 동작을 5회 재생하고 0.5초 대기하는 뷰어")
     parser.add_argument("--self-test", action="store_true", help="창 없이 내부 검증 실행")
     parser.add_argument("--cycles", type=positive_integer, help="지정한 전체 순환 횟수 후 종료")
+    parser.add_argument("--start-animation", choices=[a.name for a in ANIMATIONS],
+                        help="선택한 동작부터 시작하여 전체 순서를 순환")
     args = parser.parse_args(argv)
-    return self_test() if args.self_test else run_viewer(args.cycles)
+    return self_test() if args.self_test else run_viewer(args.cycles, start_animation=args.start_animation)
 
 
 if __name__ == "__main__":
