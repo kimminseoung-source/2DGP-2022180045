@@ -76,6 +76,15 @@ def validate_animations(animations, image_width, image_height):
                 raise ValueError(f"이미지 범위를 벗어난 프레임: {animation.name} {frame}")
 
 
+ANIMATIONS = (
+    Animation("대기와 표정", (make_frame(1, 39, 29, 39),)),
+)
+
+
+def draw_frame(sheet, frame):
+    sheet.clip_draw(*frame.clip_rect(sheet.h), WIDTH / 2, HEIGHT / 2)
+
+
 def main():
     """뷰어의 실행 진입점."""
     p.open_canvas(WIDTH, HEIGHT)
@@ -84,6 +93,7 @@ def main():
             if not SPRITE_PATH.is_file():
                 raise FileNotFoundError("이미지 파일이 없습니다.")
             sheet = p.load_image(str(SPRITE_PATH))
+            validate_animations(ANIMATIONS, sheet.w, sheet.h)
         except (OSError, ValueError) as error:
             print(f"이미지 로딩 실패: {SPRITE_PATH}\n원인: {error or 'PNG를 읽을 수 없습니다.'}",
                   file=sys.stderr)
@@ -97,6 +107,7 @@ def main():
             if not running:
                 break
             p.clear_canvas()
+            draw_frame(sheet, ANIMATIONS[0].frames[0])
             p.update_canvas()
             p.delay(1 / RENDER_FPS)
     finally:
