@@ -33,19 +33,22 @@ from time import perf_counter
 import pico2d as p
 import pico2d.pico2d as canvas
 
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1200, 800
 REPEAT_COUNT = 5
 HOLD_SECONDS = 0.5
 DEFAULT_FPS = 10
-DISPLAY_FRACTION = 0.65
+DISPLAY_FRACTION = 0.60
 RENDER_FPS = 60
-MOVEMENT_MARGIN = 32
-WALK_SPEED = 100
-ACCELERATION_SPEED = 180
-ROLL_SPEED = 160
-BALL_SPEED = 200
-RUN_SPEED = 240
-FAST_RUN_SPEED = 320
+MOVEMENT_MARGIN = 48
+WALK_SPEED = 180
+ACCELERATION_SPEED = 340
+ROLL_SPEED = 300
+BALL_SPEED = 420
+RUN_SPEED = 460
+FAST_RUN_SPEED = 680
+TRAIL_INTERVAL = 0.045
+TRAIL_LIFETIME = 0.24
+MAX_TRAILS = 5
 SPRITE_PATH = Path(__file__).resolve().with_name("sonic-sprite.png")
 
 
@@ -121,29 +124,29 @@ ANIMATIONS = (
         (97, 80, 37, 37), (135, 80, 32, 35), (170, 79, 32, 38),
         (206, 79, 26, 38), (238, 80, 24, 37), (263, 80, 30, 37),
         (295, 80, 36, 37), (334, 80, 32, 36), (370, 79, 29, 38),
-    ), 118, (16, 16, 18, 21, 20, 20, 16, 16, 18, 21, 20, 20)), movement_speed=WALK_SPEED),
+    ), 118, (16, 16, 18, 21, 20, 20, 16, 16, 18, 21, 20, 20)), fps=12, movement_speed=WALK_SPEED),
     Animation("가속", frame_row((
         (1, 124, 33, 40), (39, 124, 35, 39), (89, 125, 35, 38),
         (130, 121, 34, 42), (181, 122, 34, 41), (228, 122, 33, 40),
-    ), 164, (22, 23, 23, 23, 19, 19)), movement_speed=ACCELERATION_SPEED),
+    ), 164, (22, 23, 23, 23, 19, 19)), fps=16, movement_speed=ACCELERATION_SPEED),
     Animation("몸 회전", frame_row((
         (1, 169, 29, 30), (35, 167, 29, 31), (67, 169, 30, 29),
         (98, 169, 31, 29), (131, 168, 29, 30), (162, 168, 29, 31),
         (193, 170, 30, 29), (230, 170, 31, 29),
-    ), 200), movement_speed=ROLL_SPEED),
+    ), 200), fps=16, movement_speed=ROLL_SPEED),
     Animation("공 회전", (
         make_frame(268, 170, 30, 30, baseline=200),
         *frame_row(((1, 206, 30, 27), (36, 206, 29, 27), (70, 206, 29, 27),
                     (105, 206, 29, 27), (139, 206, 29, 27), (174, 206, 29, 27)), 233),
-    ), movement_speed=BALL_SPEED),
+    ), fps=18, movement_speed=BALL_SPEED),
     Animation("달리기", frame_row((
         (1, 239, 29, 35), (36, 239, 30, 35), (74, 239, 31, 35),
         (111, 238, 31, 36), (149, 239, 30, 35), (186, 238, 31, 36),
-    ), 274, (18, 18, 21, 21, 21, 21)), movement_speed=RUN_SPEED),
+    ), 274, (18, 18, 21, 21, 21, 21)), fps=16, movement_speed=RUN_SPEED),
     Animation("빠른 달리기", frame_row((
         (1, 283, 29, 35), (36, 283, 30, 35), (72, 286, 39, 31),
         (123, 285, 39, 32), (172, 286, 39, 31), (218, 285, 38, 32),
-    ), 318, (18, 18, 26, 26, 26, 26)), movement_speed=FAST_RUN_SPEED),
+    ), 318, (18, 18, 26, 26, 26, 26)), fps=20, movement_speed=FAST_RUN_SPEED),
     Animation("방향 돌기", frame_row((
         (1, 326, 24, 45), (31, 327, 29, 44), (65, 327, 20, 44),
         (90, 327, 25, 43), (119, 327, 25, 43), (149, 327, 20, 44),
@@ -166,6 +169,9 @@ class Playback:
         self.layout = display_layout(animations) if layout is None else layout
         self.position_x = self.layout[1]
         self.direction = 1
+        self.trails = []
+        self.trail_elapsed = 0.0
+        self.scene_scroll = 0.0
         self.animation_index = 0
         self.frame_index = 0
         self.frame_elapsed = 0.0
@@ -191,7 +197,16 @@ class Playback:
                 self.next_animation()
             return
         interval = 1 / self.animation.fps
+        step = min(delta_seconds, interval)
+        self.trails = [(f, x, direction, age + step)
+                       for f, x, direction, age in self.trails if age + step < TRAIL_LIFETIME]
         if self.animation.movement_speed:
+            self.trail_elapsed += step
+            if self.trail_elapsed >= TRAIL_INTERVAL:
+                self.trails.append((self.frame, self.position_x, self.direction, 0.0))
+                self.trails = self.trails[-MAX_TRAILS:]
+                self.trail_elapsed %= TRAIL_INTERVAL
+            self.scene_scroll += self.animation.movement_speed * self.direction * step * 0.35
             # 프레임 재생과 같은 지연 보정으로 한 번의 갱신에서 순간이동하지 않는다.
             distance = self.animation.movement_speed * min(delta_seconds, interval)
             bounds = movement_bounds(self.animation, self.layout)
@@ -216,6 +231,7 @@ class Playback:
                     self.holding = True
                     self.hold_elapsed = 0.0
                     self.frame_elapsed = 0.0
+                    self.trails.clear()
 
     def next_animation(self):
         self.animation_index = (self.animation_index + 1) % len(self.animations)
@@ -228,6 +244,8 @@ class Playback:
         self.holding = False
         self.position_x = self.layout[1]
         self.direction = 1
+        self.trails.clear()
+        self.trail_elapsed = 0.0
 
 
 def movement_bounds(animation, layout):
@@ -286,10 +304,55 @@ def quit_requested(events):
                for event in events)
 
 
-def clear_background():
-    # pico2d 1.5.1의 clear_canvas는 회색이므로 같은 SDL 렌더러를 검게 지운다.
-    p.SDL_SetRenderDrawColor(canvas.renderer, 0, 0, 0, 255)
-    p.SDL_RenderClear(canvas.renderer)
+def scene_line(x1, y1, x2, y2, color):
+    """무대 선 좌표는 캐릭터와 같은 좌하단 기준을 사용한다."""
+    p.SDL_SetRenderDrawColor(canvas.renderer, *color, 255)
+    p.SDL_RenderDrawLine(canvas.renderer, round(x1), round(HEIGHT - y1),
+                        round(x2), round(HEIGHT - y2))
+
+
+def draw_stage(playback):
+    ground = playback.layout[2] - 12
+    # 원본 픽셀을 변경하지 않고 SDL 도형으로 야간 무대와 원근 바닥을 그린다.
+    for top in range(0, HEIGHT, 16):
+        depth = top / HEIGHT
+        p.SDL_SetRenderDrawColor(canvas.renderer, 6 + int(depth * 5),
+                                10 + int(depth * 10), 24 + int(depth * 16), 255)
+        rect = p.SDL_Rect(0, top, WIDTH, min(16, HEIGHT - top))
+        p.SDL_RenderFillRect(canvas.renderer, rect)
+    for t in (0.12, 0.24, 0.39, 0.58, 0.8, 1.0):
+        y = ground * (1 - t * t)
+        scene_line(0, y, WIDTH, y, (16, 39, 58))
+    offset = playback.scene_scroll % 120
+    for x in range(-240, WIDTH + 241, 120):
+        bottom_x = x - offset
+        horizon_x = WIDTH / 2 + (bottom_x - WIDTH / 2) * .38
+        scene_line(horizon_x, ground, bottom_x, 0, (18, 47, 67))
+    scene_line(0, ground, WIDTH, ground, (32, 129, 161))
+    scene_line(0, ground - 3, WIDTH, ground - 3, (12, 56, 81))
+    # 바닥의 기준선과 캐릭터를 따라가는 그림자로 이동을 뚜렷하게 보여 준다.
+    for row in range(-7, 8):
+        half_width = 80 * math.sqrt(max(0, 1 - (row / 8) ** 2))
+        scene_line(playback.position_x - half_width, ground + 4 + row,
+                   playback.position_x + half_width, ground + 4 + row, (4, 8, 17))
+    if playback.animation.movement_speed and not playback.holding:
+        for index, height in enumerate((80, 135, 200)):
+            start = playback.position_x - playback.direction * (140 + index * 18)
+            length = min(220, playback.animation.movement_speed * .28)
+            scene_line(start, playback.layout[2] + height,
+                       start - playback.direction * length, playback.layout[2] + height,
+                       (28, 72 + index * 9, 106 + index * 10))
+
+
+def draw_character(sheet, playback):
+    try:
+        for frame, x, direction, age in playback.trails:
+            sheet.opacify(.22 * (1 - age / TRAIL_LIFETIME))
+            draw_frame(sheet, frame, playback.layout, x, direction)
+    finally:
+        # 잔상 이후의 본체와 다음 프레임은 항상 완전히 불투명하게 표시한다.
+        sheet.opacify(1.0)
+    draw_frame(sheet, playback.frame, playback.layout, playback.position_x, playback.direction)
 
 
 def ordered_animations(first_name=None):
@@ -342,10 +405,10 @@ def run_viewer(cycles=None, sprite_path=SPRITE_PATH, start_animation=None):
             playback.update(delta_seconds)
             if cycles is not None and playback.cycles >= cycles:
                 break
-            clear_background()
+            draw_stage(playback)
             # pico2d의 FPS 제목을 현재 동작 상태로 갱신한다.
             p.SDL_SetWindowTitle(canvas.window, viewer_title(playback).encode("utf-8"))
-            draw_frame(sheet, playback.frame, layout, playback.position_x, playback.direction)
+            draw_character(sheet, playback)
             p.update_canvas()
             p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
     finally:
@@ -479,7 +542,7 @@ def self_test():
         def test_all_frames_fit_at_uniform_scale(self):
             scale, x, y = display_layout(ANIMATIONS)
             frames = [f for a in ANIMATIONS for f in a.frames]
-            self.assertAlmostEqual(max(f.height for f in frames) * scale, HEIGHT * .65)
+            self.assertAlmostEqual(max(f.height for f in frames) * scale, HEIGHT * DISPLAY_FRACTION)
             for f in frames:
                 self.assertGreaterEqual(x - f.anchor_x * scale, 0)
                 self.assertLessEqual(x + (f.width - f.anchor_x) * scale, WIDTH)
@@ -553,7 +616,7 @@ def self_test():
             self.assertEqual(player.position_x, layout[1])
             player = Playback((ANIMATIONS[4],), layout)
             player.update(20)
-            self.assertAlmostEqual(player.position_x - layout[1], WALK_SPEED / DEFAULT_FPS)
+            self.assertAlmostEqual(player.position_x - layout[1], WALK_SPEED / ANIMATIONS[4].fps)
 
         def test_rendering_faces_movement_direction(self):
             calls = []
@@ -588,6 +651,22 @@ def self_test():
             self.assertIn("왼쪽 이동", viewer_title(player))
             player.holding = True
             self.assertIn("0.5초 대기", viewer_title(player))
+
+        def test_trails_expire_and_stop_with_animation(self):
+            player = Playback(ordered_animations("빠른 달리기"))
+            player.update(.05)
+            self.assertEqual(len(player.trails), 1)
+            for _ in range(10):
+                player.update(.05)
+                self.assertLessEqual(len(player.trails), MAX_TRAILS)
+                self.assertTrue(all(age < TRAIL_LIFETIME for _, _, _, age in player.trails))
+            while not player.holding:
+                player.update(.05)
+            self.assertEqual(player.trails, [])
+            position = player.position_x
+            player.update(.49)
+            self.assertEqual(player.trails, [])
+            self.assertEqual(player.position_x, position)
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ViewerTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
