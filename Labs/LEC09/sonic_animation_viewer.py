@@ -23,6 +23,7 @@
 프레임 경계는 고정 격자가 아니다. 첫 행은 신발이 서로 맞닿으므로
 투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
 """
+import pico2d as p
 
 WIDTH, HEIGHT = 800, 600
 REPEAT_COUNT = 5
@@ -34,6 +35,12 @@ RENDER_FPS = 60
 
 def main():
     """뷰어의 실행 진입점."""
+    p.open_canvas(WIDTH, HEIGHT)
+    try:
+        p.clear_canvas()
+        p.update_canvas()
+    finally:
+        p.close_canvas()
     return 0
 
 
