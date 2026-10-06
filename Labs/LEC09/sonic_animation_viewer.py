@@ -40,7 +40,8 @@ def main():
         running = True
         while running:
             for event in p.get_events():
-                if event.type == p.SDL_QUIT:
+                if (event.type == p.SDL_QUIT or
+                        event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
                     running = False
             if not running:
                 break
