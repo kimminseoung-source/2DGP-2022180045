@@ -77,7 +77,15 @@ def validate_animations(animations, image_width, image_height):
 
 
 ANIMATIONS = (
-    Animation("대기와 표정", (make_frame(1, 39, 29, 39),)),
+    Animation("대기와 표정", (
+        make_frame(1, 39, 29, 39, 14, 78),
+        make_frame(31, 40, 26, 38, 13, 78),
+        make_frame(58, 39, 29, 39, 14, 78),
+        make_frame(87, 40, 29, 38, 14, 78),
+        make_frame(118, 40, 30, 38, 14, 78),
+        make_frame(150, 40, 30, 38, 14, 78),
+        make_frame(182, 40, 31, 38, 14, 78),
+    )),
 )
 
 
