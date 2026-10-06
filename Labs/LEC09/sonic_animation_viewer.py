@@ -20,15 +20,18 @@
 합계 15동작 / 76프레임. 이름은 이미지의 포즈에 따른 설명이다.
 제외: 상단 제목, 하단 제작자 문구, 문구 옆 노란색/갈색 캐릭터.
 하단 두 그림은 크레딧 장식으로 분류하며 본문 동작 시퀀스에 넣지 않는다.
-프레임 경계는 고정 격자가 아니다. 첫 행은 신발이 서로 맞닿으므로
-투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
+프레임 경계는 고정 격자가 아니다. 첫 행의 프레임들은 가로 투영이
+맞닿으므로 실제 픽셀의 연결 영역과 캐릭터 경계를 함께 확인한다.
 """
 from dataclasses import dataclass
 from pathlib import Path
+import argparse
+import math
 import sys
 from time import perf_counter
 
 import pico2d as p
+import pico2d.pico2d as canvas
 
 WIDTH, HEIGHT = 800, 600
 REPEAT_COUNT = 5
@@ -67,8 +70,10 @@ def make_frame(left, top, width, height, anchor_x=None, baseline=None):
 
 
 def validate_animations(animations, image_width, image_height):
+    if not animations:
+        raise ValueError("재생할 동작이 없습니다.")
     for animation in animations:
-        if not animation.frames or animation.fps <= 0:
+        if not animation.frames or not math.isfinite(animation.fps) or animation.fps <= 0:
             raise ValueError(f"잘못된 동작 정의: {animation.name}")
         for frame in animation.frames:
             if not (frame.left >= 0 and frame.top >= 0 and frame.width > 0 and
@@ -90,15 +95,15 @@ ANIMATIONS = (
     Animation("대기와 표정", (
         make_frame(1, 39, 29, 39, 14, 78),
         make_frame(31, 40, 26, 38, 13, 78),
-        make_frame(58, 39, 29, 39, 14, 78),
-        make_frame(87, 40, 29, 38, 14, 78),
+        make_frame(58, 39, 28, 39, 14, 78),
+        make_frame(86, 40, 30, 38, 15, 78),
         make_frame(118, 40, 30, 38, 14, 78),
         make_frame(150, 40, 30, 38, 14, 78),
-        make_frame(182, 40, 31, 38, 14, 78),
+        make_frame(182, 40, 29, 38, 14, 78),
     )),
     Animation("위 바라보기", (
-        make_frame(213, 39, 31, 38, 15, 78),
-        make_frame(244, 39, 25, 38, 12, 78),
+        make_frame(211, 39, 29, 38, 17, 78),
+        make_frame(240, 39, 29, 38, 16, 78),
     )),
     Animation("웅크리기", (make_frame(270, 45, 24, 32, baseline=78),)),
     Animation("몸 말기", (make_frame(302, 51, 29, 26, baseline=78),)),
@@ -146,6 +151,8 @@ ANIMATIONS = (
 
 class Playback:
     def __init__(self, animations=ANIMATIONS):
+        if not animations:
+            raise ValueError("재생할 동작이 없습니다.")
         self.animations = animations
         self.animation_index = 0
         self.frame_index = 0
@@ -164,13 +171,20 @@ class Playback:
         return self.animation.frames[self.frame_index]
 
     def update(self, delta_seconds):
+        if not math.isfinite(delta_seconds) or delta_seconds < 0:
+            raise ValueError("경과 시간은 유한한 0 이상의 값이어야 합니다.")
         if self.holding:
             self.hold_elapsed += delta_seconds
             if self.hold_elapsed >= HOLD_SECONDS:
                 self.next_animation()
             return
         interval = 1 / self.animation.fps
-        self.frame_elapsed += min(delta_seconds, interval)
+        # 긴 창 이동/시스템 지연에서는 한 프레임만 진행한다.
+        # 보이지 않은 프레임과 동작을 건너뛰지 않고 다음 표시 시간을 새로 보장한다.
+        if delta_seconds >= interval:
+            self.frame_elapsed = interval
+        else:
+            self.frame_elapsed += delta_seconds
         if self.frame_elapsed >= interval:
             self.frame_elapsed -= interval
             if self.frame_index + 1 < len(self.animation.frames):
@@ -227,18 +241,26 @@ def quit_requested(events):
                for event in events)
 
 
-def main():
-    """뷰어의 실행 진입점."""
+def clear_background():
+    # pico2d 1.5.1의 clear_canvas는 회색이므로 같은 SDL 렌더러를 검게 지운다.
+    p.SDL_SetRenderDrawColor(canvas.renderer, 0, 0, 0, 255)
+    p.SDL_RenderClear(canvas.renderer)
+
+
+def run_viewer(cycles=None, sprite_path=SPRITE_PATH):
+    """옵션을 생략하면 무한 반복. cycles는 검증용 전체 순환 횟수."""
+    sheet = None
     p.open_canvas(WIDTH, HEIGHT)
     try:
         try:
-            if not SPRITE_PATH.is_file():
+            if not sprite_path.is_file():
                 raise FileNotFoundError("이미지 파일이 없습니다.")
-            sheet = p.load_image(str(SPRITE_PATH))
+            sheet = p.load_image(str(sprite_path))
             validate_animations(ANIMATIONS, sheet.w, sheet.h)
             layout = display_layout(ANIMATIONS)
         except (OSError, ValueError) as error:
-            print(f"이미지 로딩 실패: {SPRITE_PATH}\n원인: {error or 'PNG를 읽을 수 없습니다.'}",
+            reason = str(error) or p.IMG_GetError().decode("utf-8", errors="replace")
+            print(f"이미지 로딩 실패: {sprite_path}\n원인: {reason}",
                   file=sys.stderr)
             return 1
         running = True
@@ -252,13 +274,177 @@ def main():
             if not running:
                 break
             playback.update(delta_seconds)
-            p.clear_canvas()
+            if cycles is not None and playback.cycles >= cycles:
+                break
+            clear_background()
             draw_frame(sheet, playback.frame, layout)
             p.update_canvas()
             p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
     finally:
+        # 이미지 텍스처를 렌더러보다 먼저 해제한다.
+        sheet = None
         p.close_canvas()
     return 0
+
+
+def self_test():
+    """창을 열지 않고 재생 경계와 데이터·배치를 검증한다."""
+    import struct
+    from types import SimpleNamespace
+    import unittest
+
+    class ViewerTests(unittest.TestCase):
+        def test_source_coordinates_and_inventory(self):
+            with SPRITE_PATH.open("rb") as image:
+                header = image.read(24)
+            self.assertEqual(header[:8], b"\x89PNG\r\n\x1a\n")
+            image_width, image_height = struct.unpack(">II", header[16:24])
+            validate_animations(ANIMATIONS, image_width, image_height)
+            self.assertEqual(len(ANIMATIONS), 15)
+            frames = [f for a in ANIMATIONS for f in a.frames]
+            self.assertEqual(len(frames), 76)
+            self.assertEqual(len({(f.left, f.top, f.width, f.height) for f in frames}), 76)
+            for f in frames:
+                self.assertEqual(f.clip_rect(image_height)[1], image_height - f.top - f.height)
+
+        def test_invalid_animation_data(self):
+            f = ANIMATIONS[0].frames[0]
+            for actions in ((), (Animation("빈 동작", ()),),
+                            (Animation("속도 0", (f,), 0),),
+                            (Animation("무한 속도", (f,), math.inf),),
+                            (Animation("영역 오류", (make_frame(398, 0, 2, 3),)),)):
+                with self.assertRaises(ValueError):
+                    validate_animations(actions, 399, 525)
+
+        def test_frame_duration_and_fifth_repeat(self):
+            player = Playback()
+            player.update(.099)
+            self.assertEqual(player.frame_index, 0)
+            player.update(.001)
+            self.assertEqual(player.frame_index, 1)
+            for _ in range(33):
+                player.update(.1)
+            self.assertEqual((player.completed_repeats, player.frame_index), (4, 6))
+            self.assertFalse(player.holding)
+            player.update(.1)
+            self.assertTrue(player.holding)
+            self.assertEqual(player.completed_repeats, 5)
+            self.assertEqual(player.frame_index, 6)
+
+        def test_half_second_hold_and_reset(self):
+            player = Playback()
+            for _ in range(35):
+                player.update(.1)
+            last_frame = player.frame
+            player.update(.499)
+            self.assertTrue(player.holding)
+            self.assertEqual(player.frame, last_frame)
+            self.assertEqual(player.animation_index, 0)
+            player.update(.001)
+            self.assertEqual((player.animation_index, player.frame_index,
+                              player.completed_repeats, player.holding,
+                              player.frame_elapsed, player.hold_elapsed),
+                             (1, 0, 0, False, 0, 0))
+
+        def test_single_frame_animation(self):
+            player = Playback((ANIMATIONS[2],))
+            for repeat in range(5):
+                self.assertEqual(player.completed_repeats, repeat)
+                player.update(.1)
+            self.assertTrue(player.holding)
+            player.update(.5)
+            self.assertEqual(player.cycles, 1)
+            self.assertEqual(player.frame_index, 0)
+
+        def test_two_complete_cycles(self):
+            player = Playback()
+            for cycle in range(2):
+                for index, action in enumerate(ANIMATIONS):
+                    self.assertEqual(player.animation_index, index)
+                    for _ in range(len(action.frames) * REPEAT_COUNT):
+                        player.update(1 / action.fps)
+                    self.assertEqual(player.completed_repeats, REPEAT_COUNT)
+                    self.assertTrue(player.holding)
+                    player.update(.499)
+                    self.assertEqual(player.animation_index, index)
+                    player.update(.001)
+                self.assertEqual(player.cycles, cycle + 1)
+                self.assertEqual(player.animation_index, 0)
+
+        def test_different_frame_counts_and_speeds(self):
+            f = ANIMATIONS[0].frames[0]
+            player = Playback((Animation("느림", (f,), 5),
+                               Animation("빠름", (f, f, f), 20)))
+            for _ in range(5):
+                player.update(.2)
+            player.update(.5)
+            self.assertEqual(player.animation_index, 1)
+            player.update(.025)
+            self.assertEqual(player.frame_index, 0)
+            player.update(.025)
+            self.assertEqual(player.frame_index, 1)
+            for _ in range(14):
+                player.update(.05)
+            self.assertTrue(player.holding)
+
+        def test_long_delay_and_invalid_elapsed_time(self):
+            player = Playback()
+            player.update(.099)
+            player.update(20)
+            self.assertEqual(player.frame_index, 1)
+            self.assertEqual(player.frame_elapsed, 0)
+            player.update(.099)
+            self.assertEqual(player.frame_index, 1)
+            for value in (-1, math.inf, math.nan):
+                with self.assertRaises(ValueError):
+                    player.update(value)
+            player = Playback((ANIMATIONS[2], ANIMATIONS[1]))
+            for _ in range(5):
+                player.update(.1)
+            player.update(20)
+            self.assertEqual(player.animation_index, 1)
+            self.assertEqual(player.completed_repeats, 0)
+            self.assertEqual(player.frame_elapsed, 0)
+
+        def test_all_frames_fit_at_uniform_scale(self):
+            scale, x, y = display_layout(ANIMATIONS)
+            frames = [f for a in ANIMATIONS for f in a.frames]
+            self.assertAlmostEqual(max(f.height for f in frames) * scale, HEIGHT * .65)
+            for f in frames:
+                self.assertGreaterEqual(x - f.anchor_x * scale, 0)
+                self.assertLessEqual(x + (f.width - f.anchor_x) * scale, WIDTH)
+                self.assertGreaterEqual(y + (f.anchor_y - f.height) * scale, 0)
+                self.assertLessEqual(y + f.anchor_y * scale, HEIGHT)
+
+        def test_exit_inputs_during_playback_and_hold(self):
+            player = Playback()
+            for holding in (False, True):
+                player.holding = holding
+                self.assertTrue(quit_requested([SimpleNamespace(type=p.SDL_QUIT)]))
+                self.assertTrue(quit_requested([
+                    SimpleNamespace(type=p.SDL_KEYDOWN, key=p.SDLK_ESCAPE)]))
+                self.assertFalse(quit_requested([
+                    SimpleNamespace(type=p.SDL_KEYDOWN, key=p.SDLK_SPACE)]))
+                self.assertFalse(quit_requested([]))
+
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ViewerTests)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    return 0 if result.wasSuccessful() else 1
+
+
+def positive_integer(value):
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("순환 횟수는 1 이상의 정수여야 합니다.")
+    return number
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="소닉 동작을 5회 재생하고 0.5초 대기하는 뷰어")
+    parser.add_argument("--self-test", action="store_true", help="창 없이 내부 검증 실행")
+    parser.add_argument("--cycles", type=positive_integer, help="지정한 전체 순환 횟수 후 종료")
+    args = parser.parse_args(argv)
+    return self_test() if args.self_test else run_viewer(args.cycles)
 
 
 if __name__ == "__main__":
