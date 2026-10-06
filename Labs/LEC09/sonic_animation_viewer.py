@@ -23,6 +23,8 @@
 프레임 경계는 고정 격자가 아니다. 첫 행은 신발이 서로 맞닿으므로
 투명 픽셀의 연결 여부만으로 분할하지 않고 실제 캐릭터 경계를 사용한다.
 """
+from pathlib import Path
+
 import pico2d as p
 
 WIDTH, HEIGHT = 800, 600
@@ -31,12 +33,14 @@ HOLD_SECONDS = 0.5
 DEFAULT_FPS = 10
 DISPLAY_FRACTION = 0.65
 RENDER_FPS = 60
+SPRITE_PATH = Path(__file__).resolve().with_name("sonic-sprite.png")
 
 
 def main():
     """뷰어의 실행 진입점."""
     p.open_canvas(WIDTH, HEIGHT)
     try:
+        sheet = p.load_image(str(SPRITE_PATH))
         running = True
         while running:
             for event in p.get_events():
