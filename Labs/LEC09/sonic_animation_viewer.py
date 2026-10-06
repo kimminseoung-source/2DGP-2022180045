@@ -26,6 +26,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import sys
+from time import perf_counter
 
 import pico2d as p
 
@@ -121,7 +122,11 @@ def main():
                   file=sys.stderr)
             return 1
         running = True
+        previous_time = perf_counter()
         while running:
+            loop_start = perf_counter()
+            delta_seconds = loop_start - previous_time
+            previous_time = loop_start
             for event in p.get_events():
                 if (event.type == p.SDL_QUIT or
                         event.type == p.SDL_KEYDOWN and event.key == p.SDLK_ESCAPE):
@@ -131,7 +136,7 @@ def main():
             p.clear_canvas()
             draw_frame(sheet, ANIMATIONS[0].frames[0], layout)
             p.update_canvas()
-            p.delay(1 / RENDER_FPS)
+            p.delay(max(0, 1 / RENDER_FPS - (perf_counter() - loop_start)))
     finally:
         p.close_canvas()
     return 0
