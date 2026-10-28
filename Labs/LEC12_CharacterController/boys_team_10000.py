@@ -14,20 +14,27 @@ class Grass:
     def update(self):
         pass
 
-
 class Boy:
+    image = None  # 모든 소년이 공유할 이미지
+
     def __init__(self):
         self.x, self.y = random.randint(0, 800), 90
         self.frame = random.randint(0, 7)
-        self.image = load_image('run_animation.png')
+
+        # 첫 객체를 만들 때만 이미지를 불러옵니다.
+        if Boy.image is None:
+            Boy.image = load_image('run_animation.png')
 
     def update(self):
         self.frame = (self.frame + 1) % 8
         self.x += 5
 
     def draw(self):
-        self.image.clip_draw(self.frame * 100, 0, 100, 100, self.x, self.y)
-
+        self.image.clip_draw(
+            self.frame * 100, 0,
+            100, 100,
+            self.x, self.y
+        )
 
 def handle_events():
     global running
@@ -47,22 +54,19 @@ def reset_world():
     grass = Grass()
     world.append(grass)
 
-    team = [Boy() for i in range(10)]
+    team = [Boy() for i in range(10000)]
     world += team
-
 
 def update_world():
     for o in world:
         o.update()
     pass
 
-
 def render_world():
     clear_canvas()
     for o in world:
         o.draw()
     update_canvas()
-
 
 running = True
 
