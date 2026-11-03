@@ -1,24 +1,28 @@
 from math import pi
 
 from pico2d import get_canvas_width, get_time, load_image
-from sdl2 import (SDL_KEYDOWN, SDL_KEYUP, SDLK_LEFT, SDLK_RIGHT,
+from sdl2 import (SDL_KEYDOWN, SDL_KEYUP, SDLK_k, SDLK_LEFT, SDLK_RIGHT,
                   SDLK_SPACE)
 from transitions import Machine
+
+import game_world
+from ball import Ball
 
 
 class Boy:
     def __init__(self):
-        self.x, self.y = 400, 90
+        self.x, self.y = 400, 0
         self.frame = 0
         self.image = load_image('animation_sheet.png')
         self.idle_started_at = get_time()
         self.dir = 0
         self.face_dir = 1
         self.pressed_keys = set()
+        self.resume_run = False
 
         self.machine = Machine(
             model=self,
-            states=['IDLE', 'SLEEP', 'RUN'],
+            states=['IDLE', 'SLEEP', 'RUN', 'KICK'],
             transitions=[
                 {'trigger': 'fall_asleep',
                  'source': 'IDLE', 'dest': 'SLEEP'},
@@ -28,6 +32,10 @@ class Boy:
                  'source': ['IDLE', 'SLEEP'], 'dest': 'RUN'},
                 {'trigger': 'stop_run',
                  'source': 'RUN', 'dest': 'IDLE'},
+                {'trigger': 'start_kick',
+                 'source': ['IDLE', 'RUN'], 'dest': 'KICK'},
+                {'trigger': 'finish_kick',
+                 'source': 'KICK', 'dest': 'IDLE'},
             ],
             initial='IDLE',
             auto_transitions=False,
@@ -43,11 +51,23 @@ class Boy:
     def on_enter_RUN(self):
         self.frame = 0
 
+    def on_enter_KICK(self):
+        self.frame = 0
+        print('공 발사!')
+        game_world.add_object(Ball(self.x, self.y, self.face_dir))
+
     def handle_event(self, event):
         if (event.type == SDL_KEYDOWN and
                 event.key == SDLK_SPACE and
                 self.state == 'SLEEP'):
             self.wake_up()
+            return
+
+        if (event.type == SDL_KEYDOWN and
+                event.key in (SDLK_k, SDLK_SPACE) and
+                self.state in ('IDLE', 'RUN')):
+            self.resume_run = self.state == 'RUN'
+            self.start_kick()
             return
 
         if (event.type not in (SDL_KEYDOWN, SDL_KEYUP) or
@@ -81,6 +101,11 @@ class Boy:
             self.frame = (self.frame + 1) % 8
             self.x += self.dir * 5
             self.x = max(25, min(get_canvas_width() - 25, self.x))
+        elif self.state == 'KICK':
+            self.finish_kick()
+            if self.resume_run:
+                self.resume_run = False
+                self.start_run()
 
     def draw(self):
         if self.state == 'SLEEP':
